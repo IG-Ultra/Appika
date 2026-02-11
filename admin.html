@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Store - Admin Panel</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617; /* Very Dark Slate/Black */
+            color: #cbd5e1;
+        }
+
+        h1, h2, h3, .brand-font {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Glassmorphism Admin Style */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .glass-input {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .glass-input:focus {
+            border-color: #6366f1; /* Indigo 500 */
+            background: rgba(30, 41, 59, 0.8);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-enter { animation: fadeIn 0.4s ease-out forwards; }
+
+        .loader {
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 2px solid #8b5cf6; /* Violet */
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Auth View -->
+    <div id="auth-view" class="fixed inset-0 z-50 bg-[#020617] flex items-center justify-center p-4">
+        <div class="w-full max-w-sm glass-panel p-8 rounded-2xl">
+            <div class="text-center mb-8">
+                <div class="w-12 h-12 bg-violet-600 rounded-xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-violet-500/20">
+                    <i class="fa-solid fa-shield-halved text-2xl text-white"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white">Admin Control</h1>
+                <p class="text-slate-400 text-sm mt-2">Secure Access Terminal</p>
+            </div>
+
+            <div class="space-y-4">
+                <input type="email" id="login-email" placeholder="Admin Email" class="w-full glass-input rounded-lg px-4 py-3">
+                <input type="password" id="login-password" placeholder="Password" class="w-full glass-input rounded-lg px-4 py-3">
+                <button onclick="handleLogin()" class="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold py-3 rounded-lg transition-all shadow-lg shadow-violet-600/20 active:scale-95">
+                    Authenticate
+                </button>
+            </div>
+            <p id="auth-error" class="text-red-400 text-center text-sm mt-4 hidden"></p>
+        </div>
+    </div>
+
+    <!-- Access Denied View (With Setup Feature) -->
+    <div id="denied-view" class="fixed inset-0 z-40 bg-[#020617] flex flex-col items-center justify-center p-4 hidden">
+        <div class="glass-panel p-10 rounded-2xl text-center max-w-md border-red-500/20">
+            <i class="fa-solid fa-ban text-5xl text-red-500/20 mb-6"></i>
+            <h2 class="text-3xl font-bold text-white mb-2">Access Denied</h2>
+            <p class="text-slate-400 mb-8">Your account does not have administrative privileges.</p>
+            
+            <button onclick="handleLogout()" class="text-slate-500 hover:text-white underline text-sm">
+                Return to Login
+            </button>
+
+            <!-- SECRET SETUP BUTTON -->
+            <div class="mt-12 pt-8 border-t border-slate-800">
+                <p class="text-xs text-slate-600 mb-2 uppercase tracking-widest">System Configuration</p>
+                <button onclick="setupAdmin()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-1 rounded transition-colors border border-slate-700">
+                    <i class="fa-solid fa-wrench mr-1"></i> Setup Admin (First Time)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Sidebar -->
+    <aside id="sidebar" class="w-full md:w-64 bg-[#020617] border-r border-slate-800 flex-shrink-0 hidden md:flex flex-col z-30 h-full">
+        <div class="p-6 flex items-center gap-3 border-b border-slate-800/50">
+            <div class="w-8 h-8 bg-violet-600 rounded-lg flex items-center justify-center">
+                <i class="fa-solid fa-layer-group text-white text-sm"></i>
+            </div>
+            <span class="font-bold text-lg tracking-tight text-white">AdminPanel</span>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+            <button onclick="switchTab('dashboard')" class="nav-btn w-full text-left px-4 py-3 rounded-lg bg-violet-600/10 text-violet-400 font-medium flex items-center gap-3 border border-violet-600/20">
+                <i class="fa-solid fa-chart-line w-5"></i> Dashboard
+            </button>
+            <button onclick="switchTab('users')" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3">
+                <i class="fa-solid fa-users w-5"></i> Users
+            </button>
+            <button onclick="switchTab('settings')" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3">
+                <i class="fa-solid fa-gear w-5"></i> Settings
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800/50">
+            <button onclick="handleLogout()" class="w-full flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
+                <i class="fa-solid fa-power-off w-5"></i> Sign Out
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main id="main-content" class="flex-1 flex flex-col h-screen hidden overflow-hidden relative">
+        <!-- Mobile Header -->
+        <header class="md:hidden bg-[#020617] p-4 border-b border-slate-800 flex justify-between items-center">
+            <span class="font-bold text-white">AdminPanel</span>
+            <button onclick="handleLogout()" class="text-slate-400"><i class="fa-solid fa-power-off"></i></button>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-4 md:p-8">
+            
+            <!-- Dashboard Tab -->
+            <div id="tab-dashboard" class="space-y-8">
+                <!-- Stats -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-panel p-6 rounded-xl border-l-4 border-blue-500">
+                        <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Total Apps</div>
+                        <div class="text-3xl font-bold text-white" id="stat-total">0</div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-xl border-l-4 border-yellow-500">
+                        <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Pending Review</div>
+                        <div class="text-3xl font-bold text-white" id="stat-pending">0</div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-xl border-l-4 border-emerald-500">
+                        <div class="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2">Live Apps</div>
+                        <div class="text-3xl font-bold text-white" id="stat-approved">0</div>
+                    </div>
+                </div>
+
+                <!-- Review Queue -->
+                <section>
+                    <div class="flex justify-between items-end mb-4">
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-clipboard-check text-yellow-500"></i> Review Queue
+                        </h2>
+                        <span class="text-xs text-slate-500">Action required</span>
+                    </div>
+                    
+                    <div class="glass-panel rounded-xl overflow-hidden">
+                        <div id="pending-list" class="divide-y divide-slate-800">
+                            <!-- Pending items injected here -->
+                            <div class="p-8 text-center text-slate-500">No pending reviews.</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Live Management -->
+                <section class="pb-10">
+                    <div class="flex justify-between items-end mb-4">
+                        <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-server text-emerald-500"></i> Live Management
+                        </h2>
+                    </div>
+                    
+                    <div class="glass-panel rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left">
+                                <thead class="bg-slate-900/50 text-xs uppercase text-slate-500">
+                                    <tr>
+                                        <th class="px-6 py-3">App</th>
+                                        <th class="px-6 py-3">Developer</th>
+                                        <th class="px-6 py-3">Version</th>
+                                        <th class="px-6 py-3 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="live-list" class="divide-y divide-slate-800 text-sm">
+                                    <!-- Live items injected here -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="live-empty" class="p-8 text-center text-slate-500 hidden">No live apps found.</div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Placeholder Tabs -->
+            <div id="tab-users" class="hidden flex items-center justify-center h-64 text-slate-500">
+                User management module placeholder.
+            </div>
+            <div id="tab-settings" class="hidden flex items-center justify-center h-64 text-slate-500">
+                System settings placeholder.
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-800 border border-slate-700 text-white px-6 py-3 rounded-lg shadow-2xl transform translate-y-24 transition-transform duration-300 z-50 flex items-center gap-3">
+        <i id="toast-icon" class="fa-solid fa-check-circle text-emerald-400"></i>
+        <span id="toast-msg">Action completed</span>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, collection, getDoc, doc, updateDoc, deleteDoc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // --- CONFIGURATION ---
+        const firebaseConfig = {
+    apiKey: "AIzaSyAWHwLvlB5CPsouQzcQLPxwPU_pRlg5vkM",
+    authDomain: "app-pika.firebaseapp.com",
+    projectId: "app-pika",
+    storageBucket: "app-pika.firebasestorage.app",
+    messagingSenderId: "527545914324",
+    appId: "1:527545914324:web:e480aca74093ea9b0dfc41",
+    measurementId: "G-248X41NWGY"
+  };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State
+        let currentUser = null;
+        let allApps = [];
+
+        // DOM
+        const authView = document.getElementById('auth-view');
+        const deniedView = document.getElementById('denied-view');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+
+        // --- AUTHENTICATION ---
+
+        window.handleLogin = async () => {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch (e) {
+                const err = document.getElementById('auth-error');
+                err.textContent = e.message;
+                err.classList.remove('hidden');
+            }
+        };
+
+        window.handleLogout = () => signOut(auth);
+
+        window.setupAdmin = async () => {
+            if (!currentUser) return;
+            const confirmAction = confirm("WARNING: This will promote your current account to Admin. Are you sure?");
+            if (confirmAction) {
+                try {
+                    await updateDoc(doc(db, "users", currentUser.uid), {
+                        role: 'admin'
+                    });
+                    alert("Account promoted. Please refresh or wait.");
+                    // Auth listener will catch the change
+                } catch (e) {
+                    alert("Error: " + e.message);
+                }
+            }
+        };
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                const role = userDoc.exists() ? userDoc.data().role : 'user';
+
+                if (role === 'admin') {
+                    authView.classList.add('hidden');
+                    deniedView.classList.add('hidden');
+                    sidebar.classList.remove('hidden');
+                    sidebar.classList.add('flex');
+                    mainContent.classList.remove('hidden');
+                    initDashboard();
+                } else {
+                    authView.classList.add('hidden');
+                    deniedView.classList.remove('hidden');
+                    sidebar.classList.add('hidden');
+                    mainContent.classList.add('hidden');
+                }
+            } else {
+                authView.classList.remove('hidden');
+                deniedView.classList.add('hidden');
+                sidebar.classList.add('hidden');
+                mainContent.classList.add('hidden');
+            }
+        });
+
+        // --- DASHBOARD LOGIC ---
+
+        function initDashboard() {
+            const q = query(collection(db, "apps"));
+            onSnapshot(q, (snapshot) => {
+                allApps = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderStats();
+                renderPending();
+                renderLive();
+            });
+        }
+
+        function renderStats() {
+            const total = allApps.length;
+            const pending = allApps.filter(a => a.status === 'pending').length;
+            const approved = allApps.filter(a => a.status === 'approved').length;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-approved').textContent = approved;
+        }
+
+        function renderPending() {
+            const list = document.getElementById('pending-list');
+            const pendingApps = allApps.filter(a => a.status === 'pending');
+            
+            if (pendingApps.length === 0) {
+                list.innerHTML = '<div class="p-8 text-center text-slate-500">No pending reviews.</div>';
+                return;
+            }
+
+            list.innerHTML = pendingApps.map(app => `
+                <div class="p-4 md:p-6 hover:bg-slate-800/30 transition-colors animate-enter">
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <img src="${app.icon}" class="w-16 h-16 rounded-lg bg-slate-800 object-cover shrink-0 border border-slate-700">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-white text-lg truncate">${app.name}</h3>
+                                    <div class="text-xs text-slate-400 mb-2">
+                                        <span class="bg-slate-800 px-2 py-1 rounded mr-2 border border-slate-700">${app.category}</span>
+                                        v${app.version}
+                                    </div>
+                                </div>
+                                <div class="text-xs text-slate-500 font-mono">${new Date(app.createdAt?.toDate()).toLocaleDateString()}</div>
+                            </div>
+                            <p class="text-sm text-slate-400 line-clamp-2 mb-4">${app.description}</p>
+                            <div class="flex items-center gap-3">
+                                <button onclick="approveApp('${app.id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-lg text-sm font-medium transition-colors shadow-lg shadow-emerald-900/20">
+                                    <i class="fa-solid fa-check mr-1"></i> Approve
+                                </button>
+                                <button onclick="rejectApp('${app.id}')" class="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-2 rounded-lg text-sm font-medium transition-colors">
+                                    <i class="fa-solid fa-xmark mr-1"></i> Reject
+                                </button>
+                                <a href="${app.apkUrl}" target="_blank" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm transition-colors" title="View APK">
+                                    <i class="fa-solid fa-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderLive() {
+            const list = document.getElementById('live-list');
+            const empty = document.getElementById('live-empty');
+            const liveApps = allApps.filter(a => a.status === 'approved');
+
+            if (liveApps.length === 0) {
+                list.innerHTML = '';
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+
+            list.innerHTML = liveApps.map(app => `
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <img src="${app.icon}" class="w-10 h-10 rounded bg-slate-800 object-cover">
+                            <div class="font-medium text-white truncate max-w-[150px]">${app.name}</div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-slate-400">${app.developerName || 'Unknown'}</td>
+                    <td class="px-6 py-4 font-mono text-xs text-slate-500">${app.version}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="deleteApp('${app.id}')" class="text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 px-3 py-1.5 rounded border border-red-500/20 transition-colors text-xs">
+                            <i class="fa-solid fa-trash mr-1"></i> Delete
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // --- ACTIONS ---
+
+        window.approveApp = async (id) => {
+            if(!confirm("Approve this app? It will be visible to all users.")) return;
+            await updateDoc(doc(db, "apps", id), { status: 'approved' });
+            showToast("App Approved");
+        };
+
+        window.rejectApp = async (id) => {
+            if(!confirm("Reject this app?")) return;
+            await updateDoc(doc(db, "apps", id), { status: 'rejected' });
+            showToast("App Rejected");
+        };
+
+        window.deleteApp = async (id) => {
+            if(!confirm("PERMANENTLY delete this app? This cannot be undone.")) return;
+            await deleteDoc(doc(db, "apps", id));
+            showToast("App Deleted");
+        };
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            const txt = document.getElementById('toast-msg');
+            txt.textContent = msg;
+            t.classList.remove('translate-y-24');
+            setTimeout(() => t.classList.add('translate-y-24'), 3000);
+        }
+
+        // Simple Tab Switcher
+        window.switchTab = (tabName) => {
+            // Hide all tabs
+            ['dashboard', 'users', 'settings'].forEach(t => {
+                document.getElementById('tab-' + t).classList.add('hidden');
+            });
+            // Show selected
+            document.getElementById('tab-' + tabName).classList.remove('hidden');
+
+            // Update Sidebar Active State
+            const btns = document.querySelectorAll('.nav-btn');
+            btns.forEach(btn => {
+                btn.className = "nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all flex items-center gap-3";
+            });
+            // Find button that called this (simplistic approach)
+            event.currentTarget.className = "nav-btn w-full text-left px-4 py-3 rounded-lg bg-violet-600/10 text-violet-400 font-medium flex items-center gap-3 border border-violet-600/20";
+        };
+
+    </script>
+</body>
+</html>

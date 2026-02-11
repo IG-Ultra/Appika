@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Store - Developer Studio</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b1121; /* Darker Slate */
+            color: #e2e8f0;
+        }
+        
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .loader {
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 2px solid #3b82f6;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="fixed inset-0 z-50 bg-[#0b1121] flex items-center justify-center p-4">
+        <div class="w-full max-w-md glass-card p-8 rounded-2xl shadow-2xl">
+            <div class="text-center mb-8">
+                <i class="fa-solid fa-code text-4xl text-blue-500 mb-3"></i>
+                <h1 class="text-2xl font-bold text-white">Developer Studio</h1>
+                <p class="text-slate-400 text-sm mt-1">Manage your AR Applications</p>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-form">
+                <input type="email" id="login-email" placeholder="Developer Email" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-3 focus:border-blue-500 focus:outline-none text-white transition-colors">
+                <input type="password" id="login-password" placeholder="Password" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-6 focus:border-blue-500 focus:outline-none text-white transition-colors">
+                <button onclick="handleLogin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors">
+                    Access Console
+                </button>
+                <p class="text-center text-slate-500 text-sm mt-4">
+                    New developer? <a href="#" onclick="toggleAuth('register')" class="text-blue-400 hover:underline">Register here</a>
+                </p>
+            </div>
+
+            <!-- Register Form -->
+            <div id="register-form" class="hidden">
+                <input type="text" id="reg-name" placeholder="Studio / Developer Name" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-3 focus:border-blue-500 focus:outline-none text-white transition-colors">
+                <input type="email" id="reg-email" placeholder="Email Address" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-3 focus:border-blue-500 focus:outline-none text-white transition-colors">
+                <input type="password" id="reg-password" placeholder="Password" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 mb-6 focus:border-blue-500 focus:outline-none text-white transition-colors">
+                <button onclick="handleRegister()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition-colors">
+                    Create Developer Account
+                </button>
+                <p class="text-center text-slate-500 text-sm mt-4">
+                    Have an account? <a href="#" onclick="toggleAuth('login')" class="text-blue-400 hover:underline">Sign In</a>
+                </p>
+            </div>
+            <div id="auth-msg" class="text-red-400 text-center text-sm mt-3 hidden"></div>
+        </div>
+    </div>
+
+    <!-- Access Denied Screen -->
+    <div id="denied-screen" class="fixed inset-0 z-40 bg-[#0b1121] flex flex-col items-center justify-center p-4 hidden">
+        <div class="text-center">
+            <i class="fa-solid fa-lock text-6xl text-red-500/20 mb-4"></i>
+            <h2 class="text-3xl font-bold text-white mb-2">Access Denied</h2>
+            <p class="text-slate-400 mb-8 max-w-md">You do not have permission to access the Developer Console. This area is restricted to verified developers.</p>
+            <button onclick="handleLogout()" class="text-slate-400 hover:text-white underline">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="hidden flex-1 flex flex-col h-screen overflow-hidden">
+        <!-- Header -->
+        <header class="h-16 border-b border-slate-800 bg-[#0f172a] flex items-center justify-between px-6 shrink-0">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center">
+                    <i class="fa-solid fa-layer-group text-white text-sm"></i>
+                </div>
+                <span class="font-bold text-lg tracking-tight">DevStudio</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="dev-name" class="text-sm text-slate-300 hidden md:block">Developer</span>
+                <button onclick="handleLogout()" class="text-slate-400 hover:text-red-400 transition-colors" title="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Sidebar -->
+            <aside class="w-64 bg-[#0f172a] border-r border-slate-800 hidden md:flex flex-col p-4 gap-2">
+                <button class="flex items-center gap-3 px-4 py-3 bg-slate-800 text-white rounded-lg font-medium">
+                    <i class="fa-solid fa-chart-pie"></i> Overview
+                </button>
+                <div class="mt-auto">
+                    <div class="px-4 py-3">
+                        <div class="text-xs text-slate-500 uppercase font-bold mb-2">Platform Status</div>
+                        <div class="flex items-center gap-2 text-xs text-green-400">
+                            <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                            Systems Operational
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 overflow-y-auto p-6 md:p-10 bg-[#0b1121]">
+                
+                <!-- Stats Row -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                    <div class="glass-card p-6 rounded-xl">
+                        <div class="text-slate-400 text-sm mb-1">Total Apps</div>
+                        <div class="text-3xl font-bold text-white" id="stat-total">0</div>
+                    </div>
+                    <div class="glass-card p-6 rounded-xl">
+                        <div class="text-slate-400 text-sm mb-1">Published</div>
+                        <div class="text-3xl font-bold text-green-400" id="stat-approved">0</div>
+                    </div>
+                    <div class="glass-card p-6 rounded-xl">
+                        <div class="text-slate-400 text-sm mb-1">Pending Review</div>
+                        <div class="text-3xl font-bold text-yellow-500" id="stat-pending">0</div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-white">My Applications</h2>
+                    <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors">
+                        <i class="fa-solid fa-plus"></i> New App
+                    </button>
+                </div>
+
+                <!-- App List -->
+                <div class="glass-card rounded-xl overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b border-slate-700 bg-slate-800/50 text-slate-400 text-xs uppercase tracking-wider">
+                                <th class="p-4">App Name</th>
+                                <th class="p-4">Version</th>
+                                <th class="p-4">Category</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="app-list-body" class="divide-y divide-slate-800 text-sm">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                    <div id="empty-dashboard" class="hidden p-10 text-center text-slate-500">
+                        <i class="fa-solid fa-box-open text-4xl mb-3 opacity-50"></i>
+                        <p>You haven't uploaded any apps yet.</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Upload/Edit Modal -->
+    <div id="upload-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-[#1e293b] w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-700 flex flex-col max-h-[90vh]">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center">
+                <h3 id="modal-title" class="text-xl font-bold text-white">Upload New App</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                <form id="app-form" class="space-y-4">
+                    <input type="hidden" id="app-id">
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="block text-xs font-medium text-slate-400 mb-1">App Name</label>
+                            <input type="text" id="inp-name" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                        </div>
+                        <div class="col-span-2 md:col-span-1">
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Version (e.g., 1.0.0)</label>
+                            <input type="text" id="inp-version" required class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none font-mono">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Category</label>
+                        <select id="inp-category" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none">
+                            <option value="Games">Games</option>
+                            <option value="Productivity">Productivity</option>
+                            <option value="Social">Social</option>
+                            <option value="Utilities">Utilities</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Description</label>
+                        <textarea id="inp-desc" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none"></textarea>
+                    </div>
+
+                    <hr class="border-slate-700 my-2">
+
+                    <!-- File Uploads -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-2">App Icon (ImageKit)</label>
+                        <input type="file" id="inp-icon" accept="image/*" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700">
+                        <p id="current-icon" class="text-xs text-slate-500 mt-1"></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-2">Screenshots (ImageKit)</label>
+                        <input type="file" id="inp-screenshots" accept="image/*" multiple class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-700 file:text-white hover:file:bg-slate-600">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-2">APK File (GoFile)</label>
+                        <input type="file" id="inp-apk" accept=".apk,.zip" class="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700">
+                        <p id="current-apk" class="text-xs text-slate-500 mt-1"></p>
+                    </div>
+                </form>
+            </div>
+
+            <div class="p-6 border-t border-slate-700 flex justify-end gap-3 bg-[#1e293b] rounded-b-2xl">
+                <button onclick="closeModal()" class="px-4 py-2 text-slate-300 hover:text-white text-sm font-medium">Cancel</button>
+                <button onclick="saveApp()" id="btn-save" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2">
+                    <span>Save App</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-800 border border-slate-700 text-white px-6 py-3 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-3 z-50">
+        <i class="fa-solid fa-circle-check text-green-400"></i>
+        <span id="toast-msg">Operation successful</span>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // --- CONFIGURATION ---
+        
+        // 1. Firebase Config
+        const firebaseConfig = {
+    apiKey: "AIzaSyAWHwLvlB5CPsouQzcQLPxwPU_pRlg5vkM",
+    authDomain: "app-pika.firebaseapp.com",
+    projectId: "app-pika",
+    storageBucket: "app-pika.firebasestorage.app",
+    messagingSenderId: "527545914324",
+    appId: "1:527545914324:web:e480aca74093ea9b0dfc41",
+    measurementId: "G-248X41NWGY"
+  };
+
+        // 2. ImageKit Config (Required for Image Upload)
+        const IMAGEKIT_PUBLIC_KEY = "YOUR_IMAGEKIT_PUBLIC_KEY";
+        const IMAGEKIT_URL_ENDPOINT = "https://ik.imagekit.io/YOUR_IMAGEKIT_ID";
+
+        // Initialize
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State
+        let currentUser = null;
+        let userRole = null;
+        let myApps = [];
+
+        // DOM
+        const authScreen = document.getElementById('auth-screen');
+        const deniedScreen = document.getElementById('denied-screen');
+        const dashboard = document.getElementById('dashboard');
+        const modal = document.getElementById('upload-modal');
+
+        // --- AUTH & ROLE CHECK ---
+
+        window.toggleAuth = (mode) => {
+            document.getElementById('login-form').classList.toggle('hidden', mode !== 'login');
+            document.getElementById('register-form').classList.toggle('hidden', mode !== 'register');
+            document.getElementById('auth-msg').classList.add('hidden');
+        };
+
+        window.handleLogin = async () => {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch (e) {
+                showError(e.message);
+            }
+        };
+
+        window.handleRegister = async () => {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const pass = document.getElementById('reg-password').value;
+            if(!name) return showError("Studio Name is required");
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                await setDoc(doc(db, "users", cred.user.uid), {
+                    uid: cred.user.uid,
+                    name: name,
+                    email: email,
+                    role: 'developer', // Force Role
+                    createdAt: new Date()
+                });
+            } catch (e) {
+                showError(e.message);
+            }
+        };
+
+        window.handleLogout = () => signOut(auth);
+
+        function showError(msg) {
+            const el = document.getElementById('auth-msg');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+        }
+
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                // Fetch Role
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists()) {
+                    userRole = userDoc.data().role;
+                } else {
+                    userRole = 'user'; // Default fallback
+                }
+
+                if (userRole === 'developer' || userRole === 'admin') {
+                    authScreen.classList.add('hidden');
+                    deniedScreen.classList.add('hidden');
+                    dashboard.classList.remove('hidden');
+                    document.getElementById('dev-name').textContent = userDoc.data().name || 'Developer';
+                    loadMyApps();
+                } else {
+                    authScreen.classList.add('hidden');
+                    deniedScreen.classList.remove('hidden');
+                    dashboard.classList.add('hidden');
+                }
+            } else {
+                authScreen.classList.remove('hidden');
+                deniedScreen.classList.add('hidden');
+                dashboard.classList.add('hidden');
+                userRole = null;
+            }
+        });
+
+        // --- DASHBOARD LOGIC ---
+
+        function loadMyApps() {
+            const q = query(collection(db, "apps"), where("developerId", "==", currentUser.uid));
+            onSnapshot(q, (snapshot) => {
+                myApps = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+                renderDashboard();
+            });
+        }
+
+        function renderDashboard() {
+            const tbody = document.getElementById('app-list-body');
+            tbody.innerHTML = '';
+            
+            let total = 0, approved = 0, pending = 0;
+
+            myApps.forEach(app => {
+                total++;
+                if(app.status === 'approved') approved++;
+                if(app.status === 'pending') pending++;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-800/50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-4">
+                        <div class="flex items-center gap-3">
+                            <img src="${app.icon}" class="w-10 h-10 rounded bg-slate-700 object-cover">
+                            <div class="font-medium text-white">${app.name}</div>
+                        </div>
+                    </td>
+                    <td class="p-4 mono text-slate-400">${app.version}</td>
+                    <td class="p-4 text-slate-400">${app.category}</td>
+                    <td class="p-4">
+                        <span class="px-2 py-1 rounded text-xs font-medium ${getStatusClass(app.status)}">
+                            ${capitalize(app.status)}
+                        </span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="editApp('${app.id}')" class="text-blue-400 hover:text-blue-300 mr-3" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                        <button onclick="deleteApp('${app.id}')" class="text-red-400 hover:text-red-300" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            // Update Stats
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-approved').textContent = approved;
+            document.getElementById('stat-pending').textContent = pending;
+
+            // Empty State
+            const emptyState = document.getElementById('empty-dashboard');
+            if(total === 0) emptyState.classList.remove('hidden');
+            else emptyState.classList.add('hidden');
+        }
+
+        function getStatusClass(status) {
+            if(status === 'approved') return 'bg-green-500/10 text-green-400';
+            if(status === 'rejected') return 'bg-red-500/10 text-red-400';
+            return 'bg-yellow-500/10 text-yellow-500';
+        }
+
+        function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+        // --- APP MANAGEMENT ---
+
+        window.openModal = () => {
+            document.getElementById('app-form').reset();
+            document.getElementById('app-id').value = '';
+            document.getElementById('modal-title').textContent = 'Upload New App';
+            document.getElementById('current-icon').textContent = '';
+            document.getElementById('current-apk').textContent = '';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.closeModal = () => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.editApp = (id) => {
+            const app = myApps.find(a => a.id === id);
+            if(!app) return;
+
+            document.getElementById('app-id').value = app.id;
+            document.getElementById('inp-name').value = app.name;
+            document.getElementById('inp-version').value = app.version;
+            document.getElementById('inp-category').value = app.category;
+            document.getElementById('inp-desc').value = app.description;
+            
+            document.getElementById('current-icon').textContent = `Current Icon: ${app.icon.substring(0, 30)}...`;
+            document.getElementById('current-apk').textContent = `Current APK: ${app.apkUrl.substring(0, 30)}...`;
+            
+            document.getElementById('modal-title').textContent = 'Edit App';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        };
+
+        window.deleteApp = async (id) => {
+            if(confirm("Are you sure you want to delete this app?")) {
+                await deleteDoc(doc(db, "apps", id));
+                showToast("App deleted successfully");
+            }
+        };
+
+        // --- UPLOAD LOGIC ---
+
+        async function uploadToImageKit(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('fileName', file.name);
+            formData.append('publicKey', IMAGEKIT_PUBLIC_KEY);
+            // Note: In production, use backend signature. Here using simple public key upload.
+            
+            try {
+                const response = await fetch(IMAGEKIT_URL_ENDPOINT, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                return data.url; // Return the hosted URL
+            } catch (e) {
+                console.error("ImageKit Error", e);
+                alert("Image upload failed. Check console.");
+                return null;
+            }
+        }
+
+        async function uploadToGoFile(file) {
+            try {
+                // 1. Get Server
+                const serverRes = await fetch('https://api.gofile.io/getServer');
+                const serverData = await serverRes.json();
+                if(serverData.status !== 'ok') throw new Error('GoFile Server Error');
+
+                const server = serverData.data.server;
+
+                // 2. Upload File
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                const uploadRes = await fetch(`https://${server}.gofile.io/uploadFile`, {
+                    method: 'POST',
+                    body: formData
+                });
+                const uploadData = await uploadRes.json();
+                
+                if(uploadData.status !== 'ok') throw new Error('Upload Failed');
+                return uploadData.data.downloadPage; // Or direct link depending on needs, using downloadPage for safety
+            } catch (e) {
+                console.error("GoFile Error", e);
+                alert("APK upload failed. Check console.");
+                return null;
+            }
+        }
+
+        window.saveApp = async () => {
+            const id = document.getElementById('app-id').value;
+            const name = document.getElementById('inp-name').value;
+            const version = document.getElementById('inp-version').value;
+            const category = document.getElementById('inp-category').value;
+            const description = document.getElementById('inp-desc').value;
+            const iconFile = document.getElementById('inp-icon').files[0];
+            const apkFile = document.getElementById('inp-apk').files[0];
+            const screenshotFiles = document.getElementById('inp-screenshots').files;
+
+            const btn = document.getElementById('btn-save');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="loader"></div>';
+            btn.disabled = true;
+
+            try {
+                // Determine existing data if editing
+                let existingApp = id ? myApps.find(a => a.id === id) : null;
+                
+                // 1. Upload Icon (if new)
+                let iconUrl = existingApp ? existingApp.icon : '';
+                if (iconFile) {
+                    iconUrl = await uploadToImageKit(iconFile);
+                }
+
+                // 2. Upload APK (if new)
+                let apkUrl = existingApp ? existingApp.apkUrl : '';
+                if (apkFile) {
+                    apkUrl = await uploadToGoFile(apkFile);
+                }
+
+                // 3. Upload Screenshots (Simple logic: append or replace)
+                // For this demo, if files selected, we replace. If not, keep old.
+                let screenshots = existingApp ? existingApp.screenshots : [];
+                if (screenshotFiles.length > 0) {
+                    screenshots = []; // Clear old for simplicity
+                    for (let i = 0; i < screenshotFiles.length; i++) {
+                        const url = await uploadToImageKit(screenshotFiles[i]);
+                        if(url) screenshots.push(url);
+                    }
+                }
+
+                const appData = {
+                    name, version, category, description,
+                    icon: iconUrl,
+                    apkUrl: apkUrl,
+                    screenshots: screenshots,
+                    developerId: currentUser.uid,
+                    developerName: currentUser.displayName || 'Dev',
+                    status: 'pending', // Reset to pending on update usually, or keep existing if logic permits. Here resetting for review.
+                    updatedAt: new Date()
+                };
+
+                if (id) {
+                    // Keep original status if we don't want to re-approve minor edits, 
+                    // but prompt implies management. Let's keep status unless we want re-review.
+                    // Let's preserve status for edits to avoid annoying devs for typos.
+                    appData.status = existingApp.status; 
+                    appData.createdAt = existingApp.createdAt; // preserve creation time
+
+                    await updateDoc(doc(db, "apps", id), appData);
+                    showToast("App updated successfully");
+                } else {
+                    appData.createdAt = new Date();
+                    await addDoc(collection(db, "apps"), appData);
+                    showToast("App submitted for approval");
+                }
+
+                closeModal();
+            } catch (e) {
+                console.error(e);
+                alert("Error saving app: " + e.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        };
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            t.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                t.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+    </script>
+</body>
+</html>

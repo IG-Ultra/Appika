@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AR Store - User App</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Custom Styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+            color: white;
+            overflow-x: hidden;
+        }
+        
+        h1, h2, h3, .brand-font {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Glassmorphism Classes */
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-enter {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* Loader */
+        .loader {
+            border: 3px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            border-top: 3px solid #6366f1;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-slate-900 min-h-screen flex justify-center">
+
+    <!-- Auth View -->
+    <div id="auth-view" class="w-full max-w-md p-6 flex flex-col justify-center h-screen absolute inset-0 z-50 bg-slate-900 transition-transform duration-500">
+        <div class="text-center mb-10">
+            <div class="w-16 h-16 bg-indigo-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-indigo-500/30">
+                <i class="fa-solid fa-cube text-3xl text-white"></i>
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">AR Store</h1>
+            <p class="text-slate-400">Discover the future of mobile.</p>
+        </div>
+
+        <!-- Login Form -->
+        <div id="login-form" class="glass p-6 rounded-2xl shadow-xl">
+            <h2 class="text-xl font-semibold mb-6">Welcome Back</h2>
+            <input type="email" id="login-email" placeholder="Email Address" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:border-indigo-500 transition-colors text-white placeholder-slate-500">
+            <input type="password" id="login-password" placeholder="Password" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 mb-6 focus:outline-none focus:border-indigo-500 transition-colors text-white placeholder-slate-500">
+            <button onclick="handleLogin()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-lg transition-all shadow-lg shadow-indigo-600/30 active:scale-95">
+                Sign In
+            </button>
+            <p class="text-center text-slate-400 mt-4 text-sm">
+                Don't have an account? <a href="#" onclick="toggleAuthMode('register')" class="text-indigo-400 hover:underline">Sign Up</a>
+            </p>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form" class="glass p-6 rounded-2xl shadow-xl hidden">
+            <h2 class="text-xl font-semibold mb-6">Create Account</h2>
+            <input type="text" id="reg-name" placeholder="Full Name" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:border-indigo-500 transition-colors text-white placeholder-slate-500">
+            <input type="email" id="reg-email" placeholder="Email Address" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 mb-4 focus:outline-none focus:border-indigo-500 transition-colors text-white placeholder-slate-500">
+            <input type="password" id="reg-password" placeholder="Password" class="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 mb-6 focus:outline-none focus:border-indigo-500 transition-colors text-white placeholder-slate-500">
+            <button onclick="handleRegister()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg transition-all shadow-lg shadow-emerald-600/30 active:scale-95">
+                Create Account
+            </button>
+            <p class="text-center text-slate-400 mt-4 text-sm">
+                Already have an account? <a href="#" onclick="toggleAuthMode('login')" class="text-indigo-400 hover:underline">Sign In</a>
+            </p>
+        </div>
+        <div id="auth-error" class="text-red-400 text-center mt-4 text-sm hidden"></div>
+    </div>
+
+    <!-- Main App View -->
+    <div id="app-view" class="w-full max-w-md h-screen flex flex-col relative hidden bg-slate-900 pb-20">
+        
+        <!-- Header -->
+        <header class="glass sticky top-0 z-40 px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                    <i class="fa-solid fa-cube text-white text-sm"></i>
+                </div>
+                <span class="brand-font font-bold text-lg tracking-wide">AR Store</span>
+            </div>
+            <div class="w-8 h-8 rounded-full bg-slate-700 overflow-hidden border border-slate-600">
+                <img id="user-avatar" src="https://ui-avatars.com/api/?name=User&background=random" alt="User" class="w-full h-full object-cover">
+            </div>
+        </header>
+
+        <!-- Content Area -->
+        <main class="flex-1 overflow-y-auto scrollbar-hide px-6 py-6">
+            
+            <!-- Search -->
+            <div class="relative mb-6">
+                <i class="fa-solid fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="search-input" placeholder="Search apps, games..." 
+                    class="w-full bg-slate-800 text-white pl-10 pr-4 py-3 rounded-xl border border-slate-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all">
+            </div>
+
+            <!-- Categories -->
+            <div class="flex gap-3 overflow-x-auto scrollbar-hide mb-8 pb-2" id="category-container">
+                <button onclick="filterCategory('All')" class="category-pill active whitespace-nowrap px-5 py-2 rounded-full text-sm font-medium bg-indigo-600 text-white transition-all shadow-lg shadow-indigo-900/50">All</button>
+                <button onclick="filterCategory('Games')" class="category-pill whitespace-nowrap px-5 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all">Games</button>
+                <button onclick="filterCategory('Productivity')" class="category-pill whitespace-nowrap px-5 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all">Productivity</button>
+                <button onclick="filterCategory('Social')" class="category-pill whitespace-nowrap px-5 py-2 rounded-full text-sm font-medium bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700 transition-all">Social</button>
+            </div>
+
+            <!-- App List -->
+            <div id="app-list" class="space-y-4">
+                <!-- Apps injected here -->
+                <div class="flex justify-center items-center h-40">
+                    <div class="loader"></div>
+                </div>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="empty-state" class="hidden text-center py-10">
+                <i class="fa-solid fa-ghost text-4xl text-slate-600 mb-3"></i>
+                <p class="text-slate-400">No apps found.</p>
+            </div>
+        </main>
+
+        <!-- Bottom Nav -->
+        <nav class="glass-panel absolute bottom-0 w-full px-6 py-4 flex justify-around items-center z-50">
+            <button class="text-indigo-400 flex flex-col items-center gap-1">
+                <i class="fa-solid fa-house text-xl"></i>
+                <span class="text-[10px] font-medium">Home</span>
+            </button>
+            <button class="text-slate-500 hover:text-slate-300 flex flex-col items-center gap-1 transition-colors">
+                <i class="fa-solid fa-gamepad text-xl"></i>
+                <span class="text-[10px] font-medium">Games</span>
+            </button>
+            <button class="text-slate-500 hover:text-slate-300 flex flex-col items-center gap-1 transition-colors">
+                <i class="fa-solid fa-user text-xl"></i>
+                <span class="text-[10px] font-medium">Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Firebase SDKs (Modular) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+        import { getFirestore, collection, getDocs, query, where, setDoc, doc, addDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // --- CONFIGURATION ---
+        // REPLACE WITH YOUR FIREBASE CONFIG
+        const firebaseConfig = {
+    apiKey: "AIzaSyAWHwLvlB5CPsouQzcQLPxwPU_pRlg5vkM",
+    authDomain: "app-pika.firebaseapp.com",
+    projectId: "app-pika",
+    storageBucket: "app-pika.firebasestorage.app",
+    messagingSenderId: "527545914324",
+    appId: "1:527545914324:web:e480aca74093ea9b0dfc41",
+    measurementId: "G-248X41NWGY"
+  };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State
+        let currentUser = null;
+        let allApps = [];
+        let myDownloads = {}; // Format: { appId: { version: '1.0', ... } }
+        let currentCategory = 'All';
+        let searchQuery = '';
+
+        // DOM Elements
+        const authView = document.getElementById('auth-view');
+        const appView = document.getElementById('app-view');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
+        const appListEl = document.getElementById('app-list');
+        const emptyState = document.getElementById('empty-state');
+        const searchInput = document.getElementById('search-input');
+
+        // --- AUTHENTICATION ---
+
+        window.toggleAuthMode = (mode) => {
+            document.getElementById('auth-error').classList.add('hidden');
+            if (mode === 'register') {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+            } else {
+                registerForm.classList.add('hidden');
+                loginForm.classList.remove('hidden');
+            }
+        };
+
+        window.handleLogin = async () => {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const errorEl = document.getElementById('auth-error');
+            
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.remove('hidden');
+            }
+        };
+
+        window.handleRegister = async () => {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+            const errorEl = document.getElementById('auth-error');
+
+            if(!name || !email || !password) {
+                errorEl.textContent = "Please fill in all fields.";
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, password);
+                // Create User Doc with 'user' role
+                await setDoc(doc(db, "users", cred.user.uid), {
+                    uid: cred.user.uid,
+                    name: name,
+                    email: email,
+                    role: 'user', // Default role
+                    createdAt: new Date()
+                });
+            } catch (error) {
+                errorEl.textContent = error.message;
+                errorEl.classList.remove('hidden');
+            }
+        };
+
+        // Auth Listener
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                // Show App
+                authView.classList.add('hidden');
+                appView.classList.remove('hidden');
+                
+                // Update Avatar
+                document.getElementById('user-avatar').src = `https://ui-avatars.com/api/?name=${user.displayName || user.email}&background=random`;
+
+                // Load Data
+                fetchApprovedApps();
+                listenToDownloads();
+            } else {
+                // Show Auth
+                authView.classList.remove('hidden');
+                appView.classList.add('hidden');
+            }
+        });
+
+        // --- DATA LOGIC ---
+
+        // Fetch Apps (Approved Only)
+        async function fetchApprovedApps() {
+            const q = query(collection(db, "apps"), where("status", "==", "approved"));
+            const snapshot = await getDocs(q);
+            
+            allApps = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            renderApps();
+        }
+
+        // Listen to User Downloads for Real-time updates
+        function listenToDownloads() {
+            if (!currentUser) return;
+            
+            const downloadsRef = collection(db, "users", currentUser.uid, "downloads");
+            onSnapshot(downloadsRef, (snapshot) => {
+                myDownloads = {};
+                snapshot.forEach(doc => {
+                    myDownloads[doc.data().appId] = doc.data();
+                });
+                renderApps(); // Re-render to update button states
+            });
+        }
+
+        // --- UI LOGIC ---
+
+        // Filter Logic
+        window.filterCategory = (cat) => {
+            currentCategory = cat;
+            
+            // Update Pills UI
+            document.querySelectorAll('.category-pill').forEach(btn => {
+                if(btn.textContent.includes(cat)) {
+                    btn.classList.remove('bg-slate-800', 'text-slate-300', 'border-slate-700');
+                    btn.classList.add('bg-indigo-600', 'text-white', 'shadow-lg');
+                } else {
+                    btn.classList.add('bg-slate-800', 'text-slate-300', 'border-slate-700');
+                    btn.classList.remove('bg-indigo-600', 'text-white', 'shadow-lg');
+                }
+            });
+
+            renderApps();
+        };
+
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            renderApps();
+        });
+
+        // Smart Button Logic
+        function getButtonState(app) {
+            const installed = myDownloads[app.id];
+            
+            if (!installed) {
+                return { text: "Install", class: "bg-indigo-600 hover:bg-indigo-700", action: "install" };
+            }
+            
+            if (installed.version === app.version) {
+                return { text: "Open", class: "bg-slate-700 hover:bg-slate-600", action: "open" };
+            }
+            
+            // Assume installed version is older if not equal (for this demo)
+            return { text: "Update", class: "bg-emerald-600 hover:bg-emerald-700", action: "update" };
+        }
+
+        // Render App List
+        function renderApps() {
+            appListEl.innerHTML = '';
+            
+            const filtered = allApps.filter(app => {
+                const matchesCategory = currentCategory === 'All' || app.category === currentCategory;
+                const matchesSearch = app.name.toLowerCase().includes(searchQuery) || app.description.toLowerCase().includes(searchQuery);
+                return matchesCategory && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach((app, index) => {
+                const btnState = getButtonState(app);
+                const delay = index * 50; // Stagger animation
+
+                const card = document.createElement('div');
+                card.className = `glass p-4 rounded-2xl flex gap-4 items-center animate-enter`;
+                card.style.animationDelay = `${delay}ms`;
+
+                card.innerHTML = `
+                    <img src="${app.icon || 'https://via.placeholder.com/64'}" class="w-16 h-16 rounded-xl object-cover bg-slate-800 shadow-sm" alt="${app.name}">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-white truncate">${app.name}</h3>
+                        <p class="text-xs text-slate-400 mb-1">${app.category} • v${app.version}</p>
+                        <p class="text-xs text-slate-500 truncate">${app.description}</p>
+                    </div>
+                    <button onclick="handleAppAction('${app.id}', '${app.name}', '${app.version}', '${btnState.action}')" 
+                        class="px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all active:scale-95 shadow-lg ${btnState.class}">
+                        ${btnState.text}
+                    </button>
+                `;
+                appListEl.appendChild(card);
+            });
+        }
+
+        // Handle Button Clicks
+        window.handleAppAction = async (appId, appName, version, action) => {
+            if (action === 'open') {
+                alert(`Opening ${appName}...`);
+                return;
+            }
+
+            // Install or Update
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerHTML = '<div class="loader w-4 h-4 border-2"></div>';
+            
+            try {
+                const downloadRef = collection(db, "users", currentUser.uid, "downloads");
+                // Check if we are updating or installing fresh
+                const existing = myDownloads[appId];
+                
+                if (existing) {
+                    // Update existing doc (simple approach: find doc ID or just query match, but here we'll just update fields if we had ID. 
+                    // Better approach for subcollection: use appId as docId)
+                    await setDoc(doc(downloadRef, appId), {
+                        appId: appId,
+                        appName: appName,
+                        version: version,
+                        timestamp: new Date()
+                    });
+                } else {
+                    await setDoc(doc(downloadRef, appId), {
+                        appId: appId,
+                        appName: appName,
+                        version: version,
+                        timestamp: new Date()
+                    });
+                }
+                
+                // UI will update automatically via listener
+                
+            } catch (error) {
+                console.error("Action failed:", error);
+                btn.innerText = "Error";
+                setTimeout(() => btn.innerText = originalText, 1000);
+            }
+        };
+
+    </script>
+</body>
+</html>
